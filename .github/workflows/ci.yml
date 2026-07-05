@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  ci:
+    name: Type check · Lint · Test · Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # Next.js build requires these to be present even if empty.
+          # Real values are never needed at build time — only at runtime.
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          AUTH_SECRET: ci-secret-not-used-at-build-time
+          REDIS_URL: redis://localhost:6379
+          OPENAI_API_KEY: sk-placeholder
+          WHATSAPP_VERIFY_TOKEN: placeholder
+          WHATSAPP_ACCESS_TOKEN: placeholder
+          WHATSAPP_PHONE_NUMBER_ID: "0"
+          WHATSAPP_APP_SECRET: placeholder
