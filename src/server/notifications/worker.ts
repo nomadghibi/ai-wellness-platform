@@ -5,6 +5,8 @@ import { processDailyPlan, type DailyPlanJobData } from "./jobs/daily-plan";
 import { processReminder, type ReminderJobData } from "./jobs/reminder";
 import { processWeeklyReview, type WeeklyReviewJobData } from "./jobs/weekly-review";
 
+let _workers: Worker[] = [];
+
 export function startWorkers(): void {
   const conn = getRedisConnection();
 
@@ -40,7 +42,9 @@ export function startWorkers(): void {
     { connection: conn, concurrency: 2 }
   );
 
-  for (const worker of [schedulerWorker, dailyPlanWorker, reminderWorker, weeklyReviewWorker]) {
+  _workers = [schedulerWorker, dailyPlanWorker, reminderWorker, weeklyReviewWorker];
+
+  for (const worker of _workers) {
     worker.on("completed", (job) =>
       console.info(`[Worker] ${job.queueName}/${job.name} completed`)
     );
@@ -53,11 +57,16 @@ export function startWorkers(): void {
   }
 
   console.info("[Worker] All workers started");
+}
 
-  process.on("SIGTERM", async () => {
-    await Promise.all([schedulerWorker.close(), dailyPlanWorker.close(), reminderWorker.close(), weeklyReviewWorker.close()]);
-    process.exit(0);
-  });
+/** Gracefully close all workers. Resolves when all in-flight jobs drain or timeout. */
+export async function closeWorkers(timeoutMs = 30_000): Promise<void> {
+  if (_workers.length === 0) return;
+  const close = Promise.all(_workers.map((w) => w.close()));
+  const timeout = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error("Worker close timed out")), timeoutMs)
+  );
+  await Promise.race([close, timeout]);
 }
 
 export async function setupSchedulerRepeat(): Promise<void> {
