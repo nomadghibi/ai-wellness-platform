@@ -37,7 +37,7 @@ const GOAL_LABELS: Record<string, string> = {
 
 export default async function DashboardPage() {
   const user = await requireAuth();
-  const [{ profile, goals, reminders, totalPoints, today, checkedInToday }, phoneRow, reviewRow] =
+  const [{ profile, goals, reminders, totalPoints, streak, achievements, today, checkedInToday }, phoneRow, reviewRow] =
     await Promise.all([
       getDashboardSummary(user.id),
       db.select({ phone: users.phone }).from(users).where(eq(users.id, user.id)).limit(1),
@@ -69,9 +69,17 @@ export default async function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {streak > 0 && (
+              <Badge variant="outline" className="text-sm px-3 py-1">
+                🔥 {streak}d streak
+              </Badge>
+            )}
             <Badge variant="outline" className="text-sm px-3 py-1">
               ⭐ {totalPoints} pts
             </Badge>
+            <Link href="/log" className={cn(buttonVariants({ size: "sm" }), "bg-emerald-600 hover:bg-emerald-700 text-white")}>
+              + Log
+            </Link>
             <form action="/api/auth/signout" method="POST">
               <Button variant="ghost" size="sm" type="submit">Sign out</Button>
             </form>
@@ -172,6 +180,29 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Achievements */}
+        {achievements.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Achievements</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-3">
+                {achievements.map((a) => (
+                  <div
+                    key={a.code}
+                    title={`${a.name} — ${a.description}`}
+                    className="flex flex-col items-center gap-1 rounded-xl border bg-muted/30 px-3 py-2 text-center w-20"
+                  >
+                    <span className="text-2xl">{a.icon ?? "🏅"}</span>
+                    <span className="text-xs text-muted-foreground leading-tight">{a.name}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Today's activity detail */}
         {(today.meals.length > 0 || today.totalActivityMin > 0 || today.habitsCompleted > 0) && (

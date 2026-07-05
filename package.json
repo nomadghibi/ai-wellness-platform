@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "worker": "tsx --env-file=.env.local src/worker.ts",
+    "db:seed": "tsx --env-file=.env.local src/server/db/seed-achievements.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

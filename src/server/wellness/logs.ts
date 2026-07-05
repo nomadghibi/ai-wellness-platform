@@ -1,4 +1,4 @@
-import { and, between, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import { db } from "@/server/db";
 import {
   mealLogs,
@@ -7,7 +7,6 @@ import {
   sleepLogs,
   habitLogs,
   dailyCheckins,
-  rewardPoints,
 } from "@/server/db/schema";
 import type {
   MealLogInput,
@@ -17,27 +16,18 @@ import type {
   HabitLogInput,
   CheckinInput,
 } from "./validation";
+import {
+  awardPoints,
+  checkMealAchievements,
+  checkWaterAchievements,
+  checkActivityAchievements,
+  checkCheckinAchievements,
+} from "./rewards";
 
 function todayStart(): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
-}
-
-async function award(
-  userId: string,
-  points: number,
-  reason: string,
-  sourceTable: string,
-  sourceId: string
-) {
-  await db.insert(rewardPoints).values({
-    userId,
-    points,
-    reason,
-    sourceTable,
-    sourceId,
-  });
 }
 
 // ─── Meal ─────────────────────────────────────────────────────────────────────
@@ -52,7 +42,8 @@ export async function createMealLog(userId: string, data: MealLogInput) {
       loggedAt: data.loggedAt ? new Date(data.loggedAt) : new Date(),
     })
     .returning();
-  await award(userId, 5, "Meal logged", "meal_logs", log.id);
+  await awardPoints(userId, 10, "Meal logged", "meal_logs", log.id);
+  checkMealAchievements(userId).catch(console.error);
   return log;
 }
 
@@ -75,7 +66,8 @@ export async function createWaterLog(userId: string, data: WaterLogInput) {
       loggedAt: data.loggedAt ? new Date(data.loggedAt) : new Date(),
     })
     .returning();
-  await award(userId, 2, "Water logged", "water_logs", log.id);
+  await awardPoints(userId, 10, "Water logged", "water_logs", log.id);
+  checkWaterAchievements(userId).catch(console.error);
   return log;
 }
 
@@ -101,7 +93,8 @@ export async function createActivityLog(userId: string, data: ActivityLogInput) 
       loggedAt: data.loggedAt ? new Date(data.loggedAt) : new Date(),
     })
     .returning();
-  await award(userId, 10, "Activity logged", "activity_logs", log.id);
+  await awardPoints(userId, 10, "Activity logged", "activity_logs", log.id);
+  checkActivityAchievements(userId, data.activityType).catch(console.error);
   return log;
 }
 
@@ -128,7 +121,7 @@ export async function createSleepLog(userId: string, data: SleepLogInput) {
       notes: data.notes,
     })
     .returning();
-  await award(userId, 5, "Sleep logged", "sleep_logs", log.id);
+  await awardPoints(userId, 10, "Sleep logged", "sleep_logs", log.id);
   return log;
 }
 
@@ -170,7 +163,7 @@ export async function createHabitLog(userId: string, data: HabitLogInput) {
     .returning();
 
   if (data.completed) {
-    await award(userId, 3, `Habit completed: ${data.habitType}`, "habit_logs", log.id);
+    await awardPoints(userId, 5, `Habit completed: ${data.habitType}`, "habit_logs", log.id);
   }
   return { log, pointsAwarded: data.completed };
 }
@@ -211,7 +204,8 @@ export async function upsertCheckin(userId: string, data: CheckinInput) {
     .values({ userId, ...data })
     .returning();
 
-  await award(userId, 10, "Daily check-in completed", "daily_checkins", checkin.id);
+  await awardPoints(userId, 10, "Daily check-in completed", "daily_checkins", checkin.id);
+  checkCheckinAchievements(userId).catch(console.error);
   return { checkin, pointsAwarded: true };
 }
 

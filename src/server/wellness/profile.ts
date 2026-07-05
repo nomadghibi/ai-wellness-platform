@@ -4,9 +4,9 @@ import {
   healthProfiles,
   wellnessGoals,
   reminders,
-  rewardPoints,
 } from "@/server/db/schema";
 import { getTodaySummary } from "./logs";
+import { getTotalPoints, getActiveStreak, getUserAchievements } from "./rewards";
 import type { HealthProfileInput, GoalsInput, RemindersInput } from "./validation";
 
 function toStr(n: number | undefined): string | undefined {
@@ -94,25 +94,24 @@ export async function replaceReminders(userId: string, data: RemindersInput) {
 }
 
 export async function getDashboardSummary(userId: string) {
-  const [profile, goals, userReminders, pointRows, todaySummary] =
+  const [profile, goals, userReminders, totalPoints, streak, earnedAchievements, todaySummary] =
     await Promise.all([
       getHealthProfile(userId),
       getGoals(userId),
       getReminders(userId),
-      db
-        .select({ points: rewardPoints.points })
-        .from(rewardPoints)
-        .where(eq(rewardPoints.userId, userId)),
+      getTotalPoints(userId),
+      getActiveStreak(userId),
+      getUserAchievements(userId),
       getTodaySummary(userId),
     ]);
-
-  const totalPoints = pointRows.reduce((sum, r) => sum + (r.points ?? 0), 0);
 
   return {
     profile,
     goals,
     reminders: userReminders,
     totalPoints,
+    streak,
+    achievements: earnedAchievements,
     today: todaySummary,
     checkedInToday: !!todaySummary.checkin?.completed,
   };
