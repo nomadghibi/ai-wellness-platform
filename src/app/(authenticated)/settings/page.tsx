@@ -47,6 +47,13 @@ export default function SettingsPage() {
             >
               Manage WhatsApp connection →
             </Link>
+            <a
+              href="/api/user/export"
+              download
+              className="block text-sm text-blue-600 hover:underline"
+            >
+              Download my data (JSON) →
+            </a>
           </CardContent>
         </Card>
 

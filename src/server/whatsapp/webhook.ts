@@ -6,6 +6,9 @@ import { findOrCreateConversation, sendWhatsAppMessage } from "./send";
 import { orchestrate } from "@/server/ai/orchestrator";
 import type { MetaInboundMessage, MetaWebhookPayload } from "./types";
 
+const OPT_OUT_KEYWORDS = /^\s*(stop|unsubscribe|cancel|quit|optout|opt out|opt-out)\s*$/i;
+const OPT_IN_KEYWORDS = /^\s*(start|subscribe|optin|opt in|opt-in|resume)\s*$/i;
+
 export function validateSignature(
   rawBody: string,
   signature: string,
@@ -53,6 +56,19 @@ export async function processInboundMessage(
     .from(users)
     .where(eq(users.phone, waId))
     .limit(1);
+
+  // Handle opt-in for suspended users before status check
+  if (user && user.status === "suspended") {
+    const rawText = message.type === "text" ? (message.text?.body ?? "").trim() : "";
+    if (OPT_IN_KEYWORDS.test(rawText)) {
+      await db.update(users).set({ status: "active", phone: waId, updatedAt: new Date() }).where(eq(users.id, user.id));
+      await sendWhatsAppMessage(waId, "Welcome back! You have been re-subscribed to your wellness coach. 💙", user.id);
+      console.info(`[WhatsApp] User ${user.id} re-subscribed via opt-in keyword`);
+    } else {
+      console.info(`[WhatsApp] Suspended user ${user.id} — ignoring non-opt-in message`);
+    }
+    return;
+  }
 
   if (!user || user.status !== "active") {
     console.info(`[WhatsApp] Unregistered phone ${waId} — ignoring`);
@@ -111,6 +127,21 @@ export async function processInboundMessage(
 
   // Only run AI on text messages
   if (message.type !== "text" || !content.trim()) return;
+
+  // Handle opt-out keywords — suspend WhatsApp messaging, clear phone
+  if (OPT_OUT_KEYWORDS.test(content)) {
+    await db
+      .update(users)
+      .set({ status: "suspended", phone: null, updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+    await sendWhatsAppMessage(
+      waId,
+      "You have been unsubscribed from AI Wellness coaching messages. No further messages will be sent.\n\nTo re-subscribe, reply START at any time. Your account and data remain intact.",
+      user.id
+    );
+    console.info(`[WhatsApp] User ${user.id} opted out — status set to suspended, phone cleared`);
+    return;
+  }
 
   try {
     const reply = await orchestrate(user.id, conversationId, stored.id, content);
