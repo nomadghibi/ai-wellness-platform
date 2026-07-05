@@ -1,0 +1,65 @@
+# Suggested Project Structure
+
+```text
+ai-wellness-platform/
+  README.md
+  .env.example
+  package.json
+  turbo.json
+  apps/
+    web/
+      app/
+        (public)/
+          page.tsx
+          pricing/page.tsx
+          privacy/page.tsx
+          terms/page.tsx
+        (auth)/
+          login/page.tsx
+          register/page.tsx
+        dashboard/
+          page.tsx
+          profile/page.tsx
+          goals/page.tsx
+          settings/page.tsx
+        admin/
+          page.tsx
+          users/page.tsx
+          conversations/page.tsx
+          analytics/page.tsx
+          prompts/page.tsx
+        api/
+          auth/
+          health-profile/
+          goals/
+          dashboard/
+          whatsapp/
+          ai/
+          admin/
+      components/
+      lib/
+  packages/
+    db/
+      schema.ts
+      migrations/
+      index.ts
+    ai/
+      agents/
+      prompts/
+      safety/
+      orchestration.ts
+    wellness/
+      daily-plan.ts
+      weekly-review.ts
+      rewards.ts
+      logs.ts
+    messaging/
+      whatsapp.ts
+      channel.types.ts
+    notifications/
+      queue.ts
+      jobs/
+    shared/
+      types.ts
+      validators.ts
+```

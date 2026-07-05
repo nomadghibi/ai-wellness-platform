@@ -1,0 +1,120 @@
+openapi: 3.0.3
+info:
+  title: AI Wellness Platform API
+  version: 0.1.0
+  description: API draft for Healthy Living Coach MVP
+servers:
+  - url: https://api.example.com
+paths:
+  /api/auth/register:
+    post:
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Registered user
+  /api/auth/login:
+    post:
+      summary: Login user
+      responses:
+        "200":
+          description: Login success
+  /api/me:
+    get:
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+  /api/health-profile:
+    post:
+      summary: Create health profile
+      responses:
+        "200":
+          description: Profile created
+    get:
+      summary: Get health profile
+      responses:
+        "200":
+          description: Profile
+    patch:
+      summary: Update health profile
+      responses:
+        "200":
+          description: Profile updated
+  /api/goals:
+    post:
+      summary: Create goal
+      responses:
+        "200":
+          description: Goal created
+    get:
+      summary: List goals
+      responses:
+        "200":
+          description: Goals
+  /api/dashboard:
+    get:
+      summary: Get user dashboard
+      responses:
+        "200":
+          description: Dashboard
+  /api/whatsapp/webhook:
+    get:
+      summary: WhatsApp webhook verification
+      responses:
+        "200":
+          description: Challenge
+    post:
+      summary: WhatsApp inbound webhook
+      responses:
+        "200":
+          description: Received
+  /api/ai/message:
+    post:
+      summary: Process AI message
+      responses:
+        "200":
+          description: AI reply
+  /api/ai/daily-plan:
+    post:
+      summary: Generate daily plan
+      responses:
+        "200":
+          description: Daily plan
+  /api/ai/weekly-review:
+    post:
+      summary: Generate weekly review
+      responses:
+        "200":
+          description: Weekly review
+  /api/admin/users:
+    get:
+      summary: Admin list users
+      responses:
+        "200":
+          description: Users
+  /api/admin/conversations:
+    get:
+      summary: Admin list conversations
+      responses:
+        "200":
+          description: Conversations
+  /api/admin/analytics:
+    get:
+      summary: Admin analytics
+      responses:
+        "200":
+          description: Analytics
