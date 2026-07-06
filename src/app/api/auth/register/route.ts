@@ -10,7 +10,7 @@ import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 export async function POST(request: Request) {
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (!rateLimit(`register:${ip}`, 5, 15 * 60 * 1000)) return rateLimitResponse();
+  if (!(await rateLimit(`register:${ip}`, 5, 15 * 60 * 1000))) return rateLimitResponse();
   let body: unknown;
   try {
     body = await request.json();

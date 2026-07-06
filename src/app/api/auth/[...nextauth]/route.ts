@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   // Only rate-limit credential sign-in attempts
   if (request.nextUrl.pathname.endsWith("/callback/credentials")) {
-    if (!rateLimit(`signin:${ip}`, 10, 15 * 60 * 1000)) return rateLimitResponse();
+    if (!(await rateLimit(`signin:${ip}`, 10, 15 * 60 * 1000))) return rateLimitResponse();
   }
   return handlers.POST(request);
 }

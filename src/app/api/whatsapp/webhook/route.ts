@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (!rateLimit(`webhook:${ip}`, 100, 60 * 1000)) return rateLimitResponse();
+  if (!(await rateLimit(`webhook:${ip}`, 100, 60 * 1000))) return rateLimitResponse();
 
   const rawBody = await request.text();
 

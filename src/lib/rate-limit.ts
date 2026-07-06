@@ -1,8 +1,10 @@
-type Entry = { count: number; resetAt: number };
+import { getRedisClient } from "./redis";
 
+// ─── In-memory fallback (dev / no Redis) ─────────────────────────────────────
+
+type Entry = { count: number; resetAt: number };
 const store = new Map<string, Entry>();
 
-// Cleanup entries older than 1 hour to prevent unbounded growth
 let lastCleanup = Date.now();
 function maybeCleanup() {
   const now = Date.now();
@@ -13,11 +15,7 @@ function maybeCleanup() {
   }
 }
 
-/**
- * Returns true if the request is allowed, false if rate limited.
- * Uses a fixed window counter per key.
- */
-export function rateLimit(key: string, limit: number, windowMs: number): boolean {
+function rateLimitMemory(key: string, limit: number, windowMs: number): boolean {
   maybeCleanup();
   const now = Date.now();
   const entry = store.get(key);
@@ -28,6 +26,39 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
   if (entry.count >= limit) return false;
   entry.count++;
   return true;
+}
+
+// ─── Redis-backed (production) ────────────────────────────────────────────────
+
+async function rateLimitRedis(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<boolean> {
+  const redis = getRedisClient()!;
+  const redisKey = `rl:${key}`;
+  const count = await redis.incr(redisKey);
+  if (count === 1) {
+    await redis.pexpire(redisKey, windowMs);
+  }
+  return count <= limit;
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<boolean> {
+  const redis = getRedisClient();
+  if (!redis) return rateLimitMemory(key, limit, windowMs);
+  try {
+    return await rateLimitRedis(key, limit, windowMs);
+  } catch {
+    // Redis unavailable — degrade gracefully to in-memory
+    return rateLimitMemory(key, limit, windowMs);
+  }
 }
 
 export function rateLimitResponse() {
