@@ -12,6 +12,9 @@ import { logAiRun } from "./logger";
 const FALLBACK_REPLY =
   "I'm having trouble responding right now. I've saved your message and will try again shortly. 💙";
 
+const QUOTA_REPLY =
+  "Your wellness coach is temporarily unavailable due to high demand. Please try again in a few hours. Your message has been saved. 💙";
+
 interface AgentResult {
   reply: string;
   actions: Action[];
@@ -35,17 +38,23 @@ async function runMainAgent(
 
   const systemContent = `${PROMPTS.mainCoach.content}\n\n${contextText}`;
 
-  const res = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.7,
-    max_tokens: 400,
-    messages: [
-      { role: "system", content: systemContent },
-      ...chatHistory,
-      { role: "user", content: userMessage },
-    ],
-    response_format: { type: "json_object" },
-  });
+  let res: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+  try {
+    res = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      max_tokens: 400,
+      messages: [
+        { role: "system", content: systemContent },
+        ...chatHistory,
+        { role: "user", content: userMessage },
+      ],
+      response_format: { type: "json_object" },
+    });
+  } catch (err) {
+    await logAiRun({ userId, conversationId, agentName, model: "gpt-4o-mini", status: "error" });
+    throw err; // re-throw so orchestrate()'s catch handles quota vs generic
+  }
 
   const latencyMs = Date.now() - start;
   const raw = res.choices[0]?.message?.content ?? "{}";
@@ -143,7 +152,15 @@ export async function orchestrate(
 
     return result.reply;
   } catch (err) {
-    console.error("[Orchestrator] Error:", err);
+    const isQuota =
+      typeof err === "object" &&
+      err !== null &&
+      "status" in err &&
+      (err as { status: number }).status === 429 &&
+      "code" in err &&
+      (err as { code: string }).code === "insufficient_quota";
+
+    console.error("[Orchestrator] Error:", isQuota ? "OpenAI quota exceeded" : err);
     await logAiRun({
       userId,
       conversationId,
@@ -151,6 +168,6 @@ export async function orchestrate(
       model: "gpt-4o-mini",
       status: "error",
     });
-    return FALLBACK_REPLY;
+    return isQuota ? QUOTA_REPLY : FALLBACK_REPLY;
   }
 }
